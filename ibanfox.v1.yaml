@@ -1,0 +1,232 @@
+openapi: 3.0.0
+servers:
+  - url: 'https://api.ibanfox.com/v1'
+info:
+  description: |-
+    An API to perform operations on IBAN and SWIFT/BIC numbers.
+    This source of this document is an OpenAPI 3 document which lives at https://github.com/theAPIfox/ibanfox
+  version: '1.0'
+  title: IBAN API
+  contact:
+    email: hello@ibanfox.com
+    name: IBANfox Support
+    url: 'https://ibanfox.com/contact'
+  license:
+    name: Apache 2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+  termsOfService: 'https://ibanfox.com/terms'
+tags:
+  - name: ibans
+paths:
+  '/ibans/{iban}/validity':
+    get:
+      summary: Validate an IBAN
+      operationId: validateIBAN
+      description: "Given a candidate IBAN, returns the result of a validation, along with a suite of validation checks.\n\nExample:\n\n```bash\ncurl --request GET \\\n--url 'https://api.ibanfox.com/v1/ibans/DE89370400440532013000/validity?apiKey=46w4e65e4q54e6' \n```"
+      parameters: []
+      tags:
+        - ibans
+      responses:
+        '200':
+          description: IBAN passed validation
+          content:
+            application/json:
+              schema:
+                type: object
+                description: ''
+                properties:
+                  iban:
+                    type: string
+                    description: The IBAN to validate
+                  valid:
+                    type: boolean
+                    description: Is the IBAN valid?
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  valid_more:
+                    $ref: '#/components/schemas/Validations'
+                required:
+                  - iban
+                  - valid
+                  - meta
+              examples:
+                Example of passed validation:
+                  value:
+                    iban: DE89370400440532013000
+                    valid: 'true'
+                    status:
+                      code: '200'
+                      message: OK
+                      more_info: ''
+                    valid_more:
+                      country_valid: 'true'
+                      bban_length_valid: 'true'
+                      iban_length_valid: 'true'
+                      bban_format_valid: 'true'
+                      iban_format_valid: 'true'
+                      iban_checksum_valid: 'true'
+                      national_checksum_valid: 'true'
+                      iban_suggest: ''
+        '422':
+          description: IBAN failed validation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  iban:
+                    type: string
+                  valid:
+                    type: boolean
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  valid_more:
+                    $ref: '#/components/schemas/Validations'
+              examples:
+                Example of failed validation:
+                  value:
+                    iban: DX89370400440532013000
+                    valid: 'false'
+                    status:
+                      code: '422'
+                      message: Unprocessable Entity
+                      more_info: 'Input is not a valid IBAN. See valid_more for more information, if available.'
+                    valid_more:
+                      country_valid: 'false'
+                      bban_length_valid: 'false'
+                      iban_length_valid: 'false'
+                      bban_format_valid: 'false'
+                      iban_format_valid: 'false'
+                      iban_checksum_valid: 'false'
+                      national_checksum_valid: 'false'
+                      iban_suggest: DE89370400440532013000
+      security:
+        - apiKey: []
+    parameters:
+      - schema:
+          type: string
+        name: iban
+        in: path
+        required: true
+        description: A candidate IBAN to validate
+  '/ibans/{iban}':
+    parameters:
+      - schema:
+          type: string
+        name: iban
+        in: path
+        required: true
+    get:
+      summary: Get details for an IBAN
+      tags:
+        - ibans
+      responses:
+        '200':
+          description: The IBAN is valid and its components are returned
+          headers: {}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  iban:
+                    type: string
+                    description: The IBAN from the request
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  details:
+                    $ref: '#/components/schemas/IbanDetails'
+                required:
+                  - iban
+                  - meta
+        '422':
+          description: "The IBAN is invalid, so its components cannot be returned. The properties of response object \"details\" will be empty. \n\nYou may wish to try method `/ibans/{iban}/validity` to determine which part of the IBAN is invalid."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  iban:
+                    type: string
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  details:
+                    $ref: '#/components/schemas/IbanDetails'
+      operationId: get-ibans-iban
+      description: "Given a valid IBAN, returns its component parts.\n\nExample:\n\n```bash\ncurl --request GET \\\n--url 'https://api.ibanfox.com/v1/ibans/DE89370400440532013000?apiKey=46w4e65e4q54e6' \n```"
+      security:
+        - apiKey: []
+components:
+  schemas:
+    Validations:
+      title: Validation suite
+      type: object
+      x-examples: {}
+      description: ''
+      x-tags:
+        - models
+      properties:
+        country_valid:
+          type: boolean
+          description: Do first two characters represent a valid IBAN country?
+        bban_length_valid:
+          type: boolean
+          description: Is the BBAN implicit in the IBAN of a valid length for the country?
+        iban_length_valid:
+          type: boolean
+          description: Is the IBAN length valid for the country?
+        bban_format_valid:
+          type: boolean
+          description: Is the BBAN implicit in the IBAN of a valid format for the country?
+        iban_format_valid:
+          type: boolean
+          description: Is the IBAN format valid?
+        iban_checksum_valid:
+          type: boolean
+          description: Is the IBAN checksum valid?
+        national_checksum_valid:
+          type: boolean
+          description: Is the national checksum valid for the country?
+        iban_suggest:
+          type: string
+          description: 'In case of a failed validation, this field attempts to provide a workable correction. Do not take this suggestion too seriously, and certainly DO NOT RELY ON IT for transferring funds.'
+    Meta:
+      title: Meta
+      type: object
+      x-tags:
+        - models
+      properties:
+        code:
+          type: string
+          description: REST HTTP response code
+        message:
+          type: string
+          description: REST HTTP response description
+        more_info:
+          type: string
+          description: 'More information about the result, if available'
+    IbanDetails:
+      title: IbanDetails
+      type: object
+      properties:
+        country_code:
+          type: string
+        bank_id:
+          type: string
+        branch_id:
+          type: string
+        account_number:
+          type: string
+        checksum:
+          type: string
+  securitySchemes:
+    apiKey:
+      name: apiKey
+      type: apiKey
+      in: query
+      description: 'To use this API, an API key is required. Get one for free at [https://ibanfox.com/register](https://ibanfox.com/register).'
+externalDocs:
+  description: "\uD83D\uDCD6 IBANfox Documentation"
+  url: 'https://ibanfox.com/docs'
+security:
+  - API Key - 1: []
